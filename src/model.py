@@ -33,7 +33,16 @@ class StylometryModel:
         """
         if df.empty:
             print("Empty dataframe, cannot train.")
-            return None, None
+            return None, None, 0.0
+            
+        # Filter out authors with fewer than 2 files to allow stratified splitting
+        author_counts = df['author'].value_counts()
+        valid_authors = author_counts[author_counts >= 2].index
+        df = df[df['author'].isin(valid_authors)].copy()
+        
+        if len(df['author'].unique()) < 2:
+            print("Not enough authors with >= 2 files to train.")
+            return None, None, 0.0
             
         X, y = self.prepare_data(df)
         
