@@ -47,9 +47,9 @@ if st.sidebar.button("Train Model"):
     else:
         with st.spinner("Training XGBoost Model..."):
             model = StylometryModel()
-            trained_model, report, accuracy = model.train(features_df, save_plots=True)
+            _, report, accuracy = model.train(features_df, save_plots=True)
             
-            st.session_state.model = trained_model
+            st.session_state.model = model
             st.session_state.features_df = features_df
             st.session_state.report = report
             st.sidebar.success(f"Model Trained! Accuracy: {accuracy*100:.2f}%")
