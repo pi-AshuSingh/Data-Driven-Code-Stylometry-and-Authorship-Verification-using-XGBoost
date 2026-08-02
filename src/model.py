@@ -84,64 +84,99 @@ class StylometryModel:
     def _save_visualizations(self, y_test, y_pred, y_proba):
         os.makedirs("results", exist_ok=True)
         
-        # 1. Confusion Matrix
-        plt.figure(figsize=(8, 6))
+        sns.set_theme(style="whitegrid")
+        n_classes = len(self.label_encoder.classes_)
+        
+        # 1. Confusion Matrix (Presentation Quality)
+        plt.figure(figsize=(12, 10))
         cm = confusion_matrix(y_test, y_pred)
-        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
-                    xticklabels=self.label_encoder.classes_,
-                    yticklabels=self.label_encoder.classes_)
-        plt.title('Confusion Matrix')
-        plt.ylabel('True Author')
-        plt.xlabel('Predicted Author')
+        
+        # Only annotate if there are few classes to avoid clutter
+        show_annot = n_classes <= 15
+        
+        sns.heatmap(cm, annot=show_annot, fmt='d', cmap='Blues',
+                    xticklabels=self.label_encoder.classes_ if show_annot else False,
+                    yticklabels=self.label_encoder.classes_ if show_annot else False,
+                    cbar_kws={'label': 'Number of predictions'})
+        
+        plt.title('Code Stylometry: Authorship Confusion Matrix', fontsize=16, pad=15)
+        plt.ylabel('True Author', fontsize=12)
+        plt.xlabel('Predicted Author', fontsize=12)
+        if show_annot:
+            plt.xticks(rotation=45, ha='right')
+            plt.yticks(rotation=0)
         plt.tight_layout()
-        plt.savefig('results/confusion_matrix.png')
+        plt.savefig('results/confusion_matrix.png', dpi=300, bbox_inches='tight')
         plt.close()
         
-        # 2. ROC Curve (Multi-class approximation by macro-averaging)
-        plt.figure(figsize=(8, 6))
-        n_classes = len(self.label_encoder.classes_)
+        # 2. ROC Curve (With Micro & Macro Averaging for Multi-class)
+        plt.figure(figsize=(10, 8))
         
         if n_classes == 2:
             fpr, tpr, _ = roc_curve(y_test, y_proba[:, 1])
             roc_auc = auc(fpr, tpr)
-            plt.plot(fpr, tpr, lw=2, label=f'ROC curve (area = {roc_auc:0.2f})')
+            plt.plot(fpr, tpr, lw=2, color='darkorange', label=f'ROC curve (AUC = {roc_auc:0.3f})')
         else:
-            # Multi-class simplified visualization
+            # Compute micro-average ROC curve and ROC area
+            # Binarize the output
+            from sklearn.preprocessing import label_binarize
+            y_test_bin = label_binarize(y_test, classes=range(n_classes))
+            
+            fpr_micro, tpr_micro, _ = roc_curve(y_test_bin.ravel(), y_proba.ravel())
+            roc_auc_micro = auc(fpr_micro, tpr_micro)
+            
+            plt.plot(fpr_micro, tpr_micro, color='deeppink', linestyle=':', linewidth=4,
+                     label=f'Micro-average ROC (AUC = {roc_auc_micro:0.3f})')
+            
+            # Plot only the top 3 best performing classes to keep graph readable
+            auc_scores = []
             for i in range(n_classes):
-                # Binarize labels for one-vs-rest
-                y_bin = (y_test == i).astype(int)
-                fpr, tpr, _ = roc_curve(y_bin, y_proba[:, i])
-                roc_auc = auc(fpr, tpr)
-                plt.plot(fpr, tpr, lw=2, label=f'Class {self.label_encoder.classes_[i]} (area = {roc_auc:0.2f})')
+                fpr, tpr, _ = roc_curve(y_test_bin[:, i], y_proba[:, i])
+                auc_scores.append((i, auc(fpr, tpr), fpr, tpr))
+                
+            auc_scores.sort(key=lambda x: x[1], reverse=True)
+            
+            colors = ['aqua', 'darkorange', 'cornflowerblue']
+            for idx, (i, roc_auc, fpr, tpr) in enumerate(auc_scores[:3]):
+                author_name = self.label_encoder.classes_[i]
+                plt.plot(fpr, tpr, lw=2, color=colors[idx % len(colors)],
+                         label=f'Class {author_name} (AUC = {roc_auc:0.3f})')
                 
         plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
         plt.xlim([0.0, 1.0])
         plt.ylim([0.0, 1.05])
-        plt.xlabel('False Positive Rate')
-        plt.ylabel('True Positive Rate')
-        plt.title('Receiver Operating Characteristic')
-        plt.legend(loc="lower right")
+        plt.xlabel('False Positive Rate', fontsize=12)
+        plt.ylabel('True Positive Rate', fontsize=12)
+        plt.title('Receiver Operating Characteristic (ROC)', fontsize=16, pad=15)
+        plt.legend(loc="lower right", fontsize=10, frameon=True, shadow=True)
         plt.tight_layout()
-        plt.savefig('results/roc_curve.png')
+        plt.savefig('results/roc_curve.png', dpi=300, bbox_inches='tight')
         plt.close()
 
         # 3. Precision-Recall Curve
-        plt.figure(figsize=(8, 6))
+        plt.figure(figsize=(10, 8))
         if n_classes == 2:
             precision, recall, _ = precision_recall_curve(y_test, y_proba[:, 1])
-            plt.plot(recall, precision, lw=2)
+            plt.plot(recall, precision, lw=2, color='green', label='PR Curve')
+            plt.legend(loc='lower left')
         else:
-            for i in range(n_classes):
-                y_bin = (y_test == i).astype(int)
-                precision, recall, _ = precision_recall_curve(y_bin, y_proba[:, i])
-                plt.plot(recall, precision, lw=2, label=f'Class {self.label_encoder.classes_[i]}')
-            plt.legend()
+            # Micro-average PR curve
+            precision_micro, recall_micro, _ = precision_recall_curve(y_test_bin.ravel(), y_proba.ravel())
+            plt.plot(recall_micro, precision_micro, color='gold', linestyle=':', linewidth=4,
+                     label='Micro-average PR Curve')
             
-        plt.xlabel('Recall')
-        plt.ylabel('Precision')
-        plt.title('Precision-Recall Curve')
+            for idx, (i, _, _, _) in enumerate(auc_scores[:3]):
+                author_name = self.label_encoder.classes_[i]
+                precision, recall, _ = precision_recall_curve(y_test_bin[:, i], y_proba[:, i])
+                plt.plot(recall, precision, lw=2, color=colors[idx % len(colors)],
+                         label=f'Class {author_name}')
+            plt.legend(loc='lower left', fontsize=10, frameon=True, shadow=True)
+            
+        plt.xlabel('Recall', fontsize=12)
+        plt.ylabel('Precision', fontsize=12)
+        plt.title('Precision-Recall Curve', fontsize=16, pad=15)
         plt.tight_layout()
-        plt.savefig('results/pr_curve.png')
+        plt.savefig('results/pr_curve.png', dpi=300, bbox_inches='tight')
         plt.close()
 
     def predict(self, df_features):
