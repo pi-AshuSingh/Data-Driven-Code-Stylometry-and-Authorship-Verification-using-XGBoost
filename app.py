@@ -110,14 +110,14 @@ with tab2:
         
         with col1:
             if os.path.exists("results/confusion_matrix.png"):
-                st.image(Image.open("results/confusion_matrix.png"), caption="Confusion Matrix", use_container_width=True)
+                st.image(Image.open("results/confusion_matrix.png"), caption="Confusion Matrix", width="stretch")
                 
         with col2:
             if os.path.exists("results/roc_curve.png"):
-                st.image(Image.open("results/roc_curve.png"), caption="ROC Curve", use_container_width=True)
+                st.image(Image.open("results/roc_curve.png"), caption="ROC Curve", width="stretch")
                 
         if os.path.exists("results/pr_curve.png"):
-            st.image(Image.open("results/pr_curve.png"), caption="Precision-Recall Curve", use_container_width=True)
+            st.image(Image.open("results/pr_curve.png"), caption="Precision-Recall Curve", width="stretch")
 
 # --- Tab 3: Feature Importance ---
 with tab3:
