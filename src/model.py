@@ -37,7 +37,14 @@ class StylometryModel:
             
         # Filter out authors with fewer than 2 files to allow stratified splitting
         author_counts = df['author'].value_counts()
-        valid_authors = author_counts[author_counts >= 2].index
+        
+        # Limit to top 50 authors if there are too many (speeds up training & fixes unreadable graphs)
+        if len(author_counts) > 50:
+            print(f"Dataset has {len(author_counts)} authors. Keeping top 50 most prolific authors for faster training...")
+            valid_authors = author_counts.head(50).index
+        else:
+            valid_authors = author_counts[author_counts >= 2].index
+            
         df = df[df['author'].isin(valid_authors)].copy()
         
         if len(df['author'].unique()) < 2:
