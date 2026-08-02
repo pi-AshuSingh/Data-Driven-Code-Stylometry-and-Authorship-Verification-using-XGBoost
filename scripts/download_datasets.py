@@ -69,11 +69,23 @@ if __name__ == "__main__":
         print(f"Failed to download GPT Java GCJ: {e}")
 
     # 2. Google AI4Code (Python Notebooks)
-    # dataset_slug: google/google-ai4code
     try:
-        # Warning: This is 1.5GB!
         ai4code_dir = os.path.join(DATASET_DIR, "ai4code")
-        download_and_extract('google/google-ai4code', ai4code_dir)
+        print("Downloading google-ai4code...")
+        
+        from kaggle.api.kaggle_api_extended import KaggleApi
+        api = KaggleApi()
+        api.authenticate()
+        
+        api.competition_download_files('google-ai4code', path=ai4code_dir)
+        
+        # Extract the competition zip
+        zip_path = os.path.join(ai4code_dir, 'google-ai4code.zip')
+        if os.path.exists(zip_path):
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                zip_ref.extractall(ai4code_dir)
+            os.remove(zip_path)
+            
         organize_ai4code(ai4code_dir)
     except Exception as e:
         print(f"Failed to download AI4Code: {e}")
