@@ -61,7 +61,7 @@ def extract_features(df):
             features['ast_num_returns'] = extractor.node_counts.get('Return', 0)
             features['ast_num_imports'] = extractor.node_counts.get('Import', 0) + extractor.node_counts.get('ImportFrom', 0)
             
-        except SyntaxError:
+        except Exception:
             # Fallback if code is not valid Python
             features['ast_max_depth'] = 0
             features['ast_num_functions'] = 0
