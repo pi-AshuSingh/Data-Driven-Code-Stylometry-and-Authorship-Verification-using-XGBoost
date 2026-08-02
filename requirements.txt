@@ -5,6 +5,3 @@ numpy==1.26.3
 streamlit
 matplotlib
 seaborn
-kaggle
-jupyter
-ipython
