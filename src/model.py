@@ -95,16 +95,18 @@ class StylometryModel:
         show_annot = n_classes <= 15
         
         sns.heatmap(cm, annot=show_annot, fmt='d', cmap='Blues',
-                    xticklabels=self.label_encoder.classes_ if show_annot else False,
-                    yticklabels=self.label_encoder.classes_ if show_annot else False,
+                    xticklabels=self.label_encoder.classes_,
+                    yticklabels=self.label_encoder.classes_,
                     cbar_kws={'label': 'Number of predictions'})
         
         plt.title('Code Stylometry: Authorship Confusion Matrix', fontsize=16, pad=15)
         plt.ylabel('True Author', fontsize=12)
         plt.xlabel('Predicted Author', fontsize=12)
-        if show_annot:
-            plt.xticks(rotation=45, ha='right')
-            plt.yticks(rotation=0)
+        
+        # Always show ticks, just make them smaller so they don't overlap as much
+        plt.xticks(rotation=90, ha='center', fontsize=6)
+        plt.yticks(rotation=0, fontsize=6)
+        
         plt.tight_layout()
         plt.savefig('results/confusion_matrix.png', dpi=300, bbox_inches='tight')
         plt.close()
