@@ -20,49 +20,54 @@ def load_dataset(dataset_path):
         print(f"Warning: Dataset path '{dataset_path}' does not exist.")
         return pd.DataFrame(columns=['code', 'author'])
 
-    for author_dir in os.listdir(dataset_path):
-        author_path = os.path.join(dataset_path, author_dir)
-        if os.path.isdir(author_path):
-            # Iterate through all files in author directory
-            for filepath in glob.glob(os.path.join(author_path, '*.*')):
-                try:
-                    with open(filepath, 'r', encoding='utf-8') as f:
-                        # Handle Jupyter Notebooks / AI4Code JSON format
-                        if filepath.endswith('.ipynb') or filepath.endswith('.json'):
-                            try:
-                                notebook = json.load(f)
-                                code_cells = []
-                                
-                                # Standard .ipynb format
-                                if 'cells' in notebook:
-                                    for cell in notebook['cells']:
-                                        if cell.get('cell_type') == 'code':
-                                            source = cell.get('source', [])
-                                            if isinstance(source, list):
-                                                code_cells.append("".join(source))
-                                            else:
-                                                code_cells.append(source)
-                                                
-                                # AI4Code custom JSON format
-                                elif 'cell_type' in notebook and 'source' in notebook:
-                                    for cell_id, ctype in notebook['cell_type'].items():
-                                        if ctype == 'code':
-                                            code_cells.append(notebook['source'].get(cell_id, ""))
-                                            
-                                code_content = "\n".join(code_cells)
-                            except json.JSONDecodeError:
-                                # Fallback if JSON is malformed
-                                f.seek(0)
-                                code_content = f.read()
-                        else:
-                            # Standard raw code file
-                            code_content = f.read()
-                            
-                        # Only add if there is actual code
-                        if code_content.strip():
-                            data.append({'code': code_content, 'author': author_dir})
-                except Exception as e:
-                    print(f"Error reading file {filepath}: {e}")
+    def process_file(filepath, author_name):
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                if filepath.endswith('.ipynb') or filepath.endswith('.json'):
+                    try:
+                        notebook = json.load(f)
+                        code_cells = []
+                        if 'cells' in notebook:
+                            for cell in notebook['cells']:
+                                if cell.get('cell_type') == 'code':
+                                    source = cell.get('source', [])
+                                    code_cells.append("".join(source) if isinstance(source, list) else source)
+                        elif 'cell_type' in notebook and 'source' in notebook:
+                            for cell_id, ctype in notebook['cell_type'].items():
+                                if ctype == 'code':
+                                    code_cells.append(notebook['source'].get(cell_id, ""))
+                        code_content = "\n".join(code_cells)
+                    except json.JSONDecodeError:
+                        f.seek(0)
+                        code_content = f.read()
+                else:
+                    code_content = f.read()
+                    
+                if code_content.strip():
+                    data.append({'code': code_content, 'author': author_name})
+        except Exception as e:
+            print(f"Error reading file {filepath}: {e}")
+
+    for item in os.listdir(dataset_path):
+        item_path = os.path.join(dataset_path, item)
+        if os.path.isdir(item_path):
+            # It's a directory
+            for filepath in glob.glob(os.path.join(item_path, '*.*')):
+                basename = os.path.basename(filepath)
+                # If GCJ format inside a folder
+                if "_0000" in basename and basename.endswith('.java'):
+                    actual_author = basename.split("_0000")[0]
+                else:
+                    actual_author = item
+                process_file(filepath, actual_author)
+        elif os.path.isfile(item_path):
+            # It's a flat file
+            basename = os.path.basename(item_path)
+            if "_0000" in basename and basename.endswith('.java'):
+                actual_author = basename.split("_0000")[0]
+            else:
+                actual_author = "unknown"
+            process_file(item_path, actual_author)
                     
     df = pd.DataFrame(data)
     print(f"Loaded {len(df)} files from {len(df['author'].unique()) if not df.empty else 0} authors.")
