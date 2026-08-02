@@ -22,7 +22,7 @@ def load_dataset(dataset_path):
 
     def process_file(filepath, author_name):
         try:
-            with open(filepath, 'r', encoding='utf-8') as f:
+            with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
                 if filepath.endswith('.ipynb') or filepath.endswith('.json'):
                     try:
                         notebook = json.load(f)
@@ -45,8 +45,8 @@ def load_dataset(dataset_path):
                     
                 if code_content.strip():
                     data.append({'code': code_content, 'author': author_name})
-        except Exception as e:
-            print(f"Error reading file {filepath}: {e}")
+        except Exception:
+            pass
 
     for item in os.listdir(dataset_path):
         item_path = os.path.join(dataset_path, item)
