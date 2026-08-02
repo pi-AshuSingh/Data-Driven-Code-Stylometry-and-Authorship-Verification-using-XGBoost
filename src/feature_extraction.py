@@ -42,10 +42,26 @@ def extract_features(df):
         lines = code.splitlines()
         features['loc'] = len(lines)
         features['avg_line_length'] = np.mean([len(line) for line in lines]) if lines else 0
-        features['num_comments'] = code.count('#')
+        
+        # Support Python (#) and Java/C++ (//, /*) comments
+        features['num_comments'] = code.count('#') + code.count('//') + code.count('/*')
         features['blank_lines'] = sum(1 for line in lines if not line.strip())
         features['tabs_count'] = code.count('\t')
         features['spaces_count'] = code.count(' ')
+        
+        # 1.5 Java / C++ Syntactic Features
+        features['semicolons'] = code.count(';')
+        features['braces'] = code.count('{')
+        features['plus_plus'] = code.count('++')
+        
+        # Keyword Frequencies
+        keywords = ['public', 'private', 'class', 'void', 'int', 'String', 'for', 'while', 'if', 'return']
+        for kw in keywords:
+            # Check for " kw " or "kw("
+            features[f'kw_{kw}'] = code.count(f' {kw} ') + code.count(f'{kw}(')
+            
+        # Brace Placement Style (Are braces on a new line?)
+        features['brace_new_line'] = sum(1 for line in lines if line.strip() == '{')
         
         # 2. AST Structural Features
         try:
